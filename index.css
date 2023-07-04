@@ -21,16 +21,18 @@ html, body {
     max-width: 464px;
     margin: 16px;
     padding: 16px;
-    background-color: rgba(255, 255, 255, .2);
+    background-color: rgba(0, 0, 0, .8);
     border-radius: 8px;
 }
 
 h1, h2, h3, h4, h5 {
     font-weight: 350;
 }
+
 a {
     color: white;
 }
+
 a:visited {
-    color: black;
+    color: #AAAAAA;
 }
