@@ -111,6 +111,8 @@ async function createShader() {
 
         if (timeDelta >  0.95) {
             framesHit++;
+        } else if (timeDelta !== 0 && timeDelta < 0.15) {
+            shader.uniforms.maxSteps.value = 80;
         } else {
             framesHit = 0;
         }
@@ -125,6 +127,11 @@ async function createShader() {
         shader.uniforms.randSeed.value = new THREE.Vector2(THREE.Math.randFloat(0.0, 1.0), THREE.Math.randFloat(0.0, 1.0));
         
         renderer.render(scene, frameCamera);
+
+        // framerate is too low to animate
+        if (timeDelta !== 0 && timeDelta < 0.15) {
+            return;
+        }
         requestAnimationFrame(animate);
     }
     requestAnimationFrame(animate);
