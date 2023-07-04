@@ -24,6 +24,8 @@ camera.up.set( -1, 1, 0 );
 const orbit = new OrbitControls(camera, renderer.domElement);
 orbit.autoRotate = true;
 
+const clock = new THREE.Clock()
+
 function resize() {
     const { width, height } = fractalElement.getBoundingClientRect();
 
@@ -53,9 +55,10 @@ async function createShader() {
             cameraFocus: { type: "float", value: 1.9 }, 
             cameraZoom: { type: "float", value: 6.5 }, 
             hueScale: { type: "float", value: 1.9 }, 
-            saturation: { type: "float", value: 0.4 }, 
-            colorValue: { type: "float", value: 0.2 }, 
+            saturation: { type: "float", value: 0.7 }, 
+            colorValue: { type: "float", value: 0.7 }, 
             exponent: { type: "float", value: 6 },
+            maxSteps: { type: "int", value: 40 },
         },
     });
     mesh.material = shader;
@@ -72,13 +75,13 @@ async function createShader() {
     const colorAnimation = {
         field: 'colorValue',
         direction: -.001,
-        max: 0.3,
-        min: 0.1,
+        max: 0.9,
+        min: 0.4,
     };
 
-    function animateValue(animation) {
+    function animateValue(animation, timeDelta) {
         let value = shader.uniforms[animation.field].value;
-        value += animation.direction;
+        value += animation.direction * timeDelta;
 
         if (value >= animation.max || value <= animation.min) {
             animation.direction = -animation.direction;
@@ -96,12 +99,27 @@ async function createShader() {
         cameraRight.copy(cameraDir).cross(Y_VECTOR).normalize();
     }
 
+    let framesHit = 0;
+
     function animate() {
         orbit.update();
-        animateValue(exponentAnimation);
-        animateValue(colorAnimation);
+        // shooting for 30 fps
+        let timeDelta = clock.getDelta() * 30;
+        animateValue(exponentAnimation, timeDelta);
+        animateValue(colorAnimation, timeDelta);
         sendCameraToShader();
 
+        if (timeDelta >  0.95) {
+            framesHit++;
+        } else {
+            framesHit = 0;
+        }
+
+        if (framesHit >= 10 && shader.uniforms.maxSteps.value < 80) {
+            shader.uniforms.maxSteps.value += 5;
+            // at least two frames at the next cadence before increasing steps
+            framesHit = 8;
+        }
         const { width, height } = fractalElement.getBoundingClientRect();
         shader.uniforms.screenRes.value = new THREE.Vector2(width, height);
         shader.uniforms.randSeed.value = new THREE.Vector2(THREE.Math.randFloat(0.0, 1.0), THREE.Math.randFloat(0.0, 1.0));

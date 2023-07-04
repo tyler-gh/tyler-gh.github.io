@@ -24,6 +24,7 @@ uniform float saturation;
 uniform float colorValue;          
 
 uniform float exponent;             
+uniform int maxSteps;             
 
 uniform sampler2D frameBuffer;
 uniform float framesCount;
@@ -76,10 +77,7 @@ Distance mandelbulb(vec3 p) {
 	float r = 0.0;
 	float b = 10000.0;
 
-	for (int i = 0; i < 30; ++i) {
-		if (i == NUM_ITERATIONS) {
-			break;
-		}
+	for (int i = 0; i < NUM_ITERATIONS; ++i) {
 		d = exponent * pow(r, exponent-1.0) * d + 1.0;
 		if (r > 0.0) {
 			float phi = atan(z.z, z.x);
@@ -101,7 +99,7 @@ Distance mandelbulb(vec3 p) {
 }
 
 vec3 light(int i, vec3 p) {
-	return vec3(1.0 - float(i) / float(MAX_STEPS));
+	return vec3(1.0 - float(i) / float(maxSteps));
 }
 
 vec3 raymarch(vec3 p, vec3 dir) {
@@ -109,6 +107,9 @@ vec3 raymarch(vec3 p, vec3 dir) {
 	float eps = EPS * dist.value / cameraZoom;
 
 	for (int i = 0; i < MAX_STEPS; ++i) {
+		if (i == maxSteps) {
+			break;
+		}
 		Distance dist = mandelbulb(p);
 		float d = dist.value;
 
@@ -125,6 +126,9 @@ vec3 hit(vec3 p, vec3 dir) {
 	float eps = EPS * dist.value / cameraZoom;
 
 	for (int i = 0; i < MAX_STEPS; ++i) {
+		if (i == maxSteps) {
+			break;
+		}
 		Distance dist = mandelbulb(p);
 		float d = dist.value;
 		if (d <= eps) {
