@@ -6,11 +6,13 @@ html, body {
     overflow: hidden;
     padding: 0;
     margin: 0;
+    font-size: calc(15px + .75vh);
+    font-weight: 300;
 }
 
 .fractal {
     position: absolute;
-    width: 100%;
+    right: 0;
     bottom: 0;
     left: 0;
     top: 0;
@@ -25,12 +27,17 @@ html, body {
     border-radius: 8px;
 }
 
-h1, h2, h3, h4, h5 {
-    font-weight: 350;
+h3 {
+    font-size: .95em;
+}
+
+p {
+    font-size: .8em;
 }
 
 a {
     color: white;
+    font-size: .7em;
 }
 
 a:visited {

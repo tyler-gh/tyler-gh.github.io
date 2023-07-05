@@ -19,23 +19,7 @@ const camera = new THREE.PerspectiveCamera(75, 1, 0.01, 1000);
 camera.position.set(0.0, 0.0, 3.0);
 camera.rotation.set(0.0, 0.0, 0.0);
 // autoRotate in x & y
-camera.up.set( -1, 1, 0 );
-
-const orbit = new OrbitControls(camera, renderer.domElement);
-orbit.autoRotate = true;
-
-const clock = new THREE.Clock()
-
-function resize() {
-    const { width, height } = fractalElement.getBoundingClientRect();
-
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-
-    renderer.setSize(width, height);
-}
-resize();
-window.addEventListener('resize', resize);
+camera.up.set(-1, 1, 0);
 
 
 async function createShader() {
@@ -44,25 +28,67 @@ async function createShader() {
         vertexShader,
         fragmentShader,
         uniforms: {
-            screenRes: {},
+            screenRes: { value: new THREE.Vector2() },
             randSeed: {},
+            mousePos: { value: new THREE.Vector2() },
             cameraPos: { value: new THREE.Vector3() },
             cameraDir: { value: new THREE.Vector3() },
             cameraRight: { value: new THREE.Vector3() },
             cameraSpeed: { value: 1.0 },
             framesCount: { value: 1.0 },
-            bokeh: { type: "float", value: 0.05 }, 
-            cameraFocus: { type: "float", value: 1.9 }, 
-            cameraZoom: { type: "float", value: 6.5 }, 
-            hueScale: { type: "float", value: 1.9 }, 
-            saturation: { type: "float", value: 0.7 }, 
-            colorValue: { type: "float", value: 0.7 }, 
+            cameraFocus: { type: "float", value: 1.9 },
+            cameraZoom: { type: "float", value: 6.5 },
+            hueScale: { type: "float", value: 1.9 },
+            saturation: { type: "float", value: 0.7 },
+            colorValue: { type: "float", value: 0.7 },
             exponent: { type: "float", value: 6 },
-            maxSteps: { type: "int", value: 40 },
+            maxSteps: { type: "int", value: 50 },
         },
     });
     mesh.material = shader;
+
+    let canvasScaling = 8;
     
+    function resize() {
+        const { width, height } = fractalElement.getBoundingClientRect();
+
+        const cameraWidth = width / canvasScaling;
+        const cameraHeight = height / canvasScaling;
+
+        camera.aspect = cameraWidth / cameraHeight;
+        camera.updateProjectionMatrix();
+        shader.uniforms.screenRes.value.set(cameraWidth, cameraHeight);
+
+        renderer.setSize(cameraWidth, cameraHeight);
+
+        renderer.domElement.style.width = width;
+        renderer.domElement.style.height = height;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function setupInteractivity(element) {
+        const orbit = new OrbitControls(camera, element);
+        orbit.autoRotate = true;
+        orbit.enableKeys = false;
+        orbit.rotateSpeed = 0.25;
+        element.addEventListener('pointerdown', (event) => {
+            camera.up.set(0, 1, 0);
+            orbit.autoRotate = false;
+        });
+        element.addEventListener('pointerup', (event) => {
+            camera.up.set(-1, 1, 0);
+            orbit.autoRotate = true;
+        });
+        element.addEventListener('mousemove', (event) => {
+            const scaledX = event.clientX / canvasScaling;
+            const scaledY = event.clientY / canvasScaling;
+            shader.uniforms.mousePos.value.set(scaledX, renderer.domElement.height - scaledY);
+        });
+        return orbit;
+    }
+    const orbit = setupInteractivity(renderer.domElement);
+
     const Y_VECTOR = new THREE.Vector3(0, 1, 0);
 
     const exponentAnimation = {
@@ -74,19 +100,21 @@ async function createShader() {
 
     const colorAnimation = {
         field: 'colorValue',
-        direction: -.001,
+        direction: -0.001,
         max: 0.9,
         min: 0.4,
     };
 
     function animateValue(animation, timeDelta) {
         let value = shader.uniforms[animation.field].value;
-        value += animation.direction * timeDelta;
-
-        if (value >= animation.max || value <= animation.min) {
+        if (value >= animation.max) {
             animation.direction = -animation.direction;
+            value = animation.max;
+        } else if (value <= animation.min) {
+            animation.direction = -animation.direction;
+            value = animation.min;
         }
-        shader.uniforms[animation.field].value = value;
+        shader.uniforms[animation.field].value = value + animation.direction * timeDelta;
     }
 
     function sendCameraToShader() {
@@ -99,41 +127,85 @@ async function createShader() {
         cameraRight.copy(cameraDir).cross(Y_VECTOR).normalize();
     }
 
-    let framesHit = 0;
+    class AverageFPS {
+        average = 1.0;
+        lastMeasuredTime = 0;
+        normalizedDelta = 0;
+        frames = 0;
+
+        update() {
+            const time = performance.now();
+            const delta = (time - this.lastMeasuredTime) / 1000;
+            this.lastMeasuredTime = time;
+            this.average -= this.average / 30;
+            this.average += delta;
+            this.normalizedDelta = delta * 30;
+            this.frames++;
+        }
+    }
+    const clock = new AverageFPS();
+
+    function render() {
+        clock.update();
+        orbit.update();
+        animateValue(exponentAnimation, clock.normalizedDelta);
+        animateValue(colorAnimation, clock.normalizedDelta);
+        sendCameraToShader();
+        shader.uniforms.randSeed.value = new THREE.Vector2(THREE.Math.randFloat(0.0, 1.0), THREE.Math.randFloat(0.0, 1.0));
+        renderer.render(scene, frameCamera);
+    }
+
+
 
     function animate() {
-        orbit.update();
-        // shooting for 30 fps
-        let timeDelta = clock.getDelta() * 30;
-        animateValue(exponentAnimation, timeDelta);
-        animateValue(colorAnimation, timeDelta);
-        sendCameraToShader();
-
-        if (timeDelta >  0.95) {
-            framesHit++;
-        } else if (timeDelta !== 0 && timeDelta < 0.15) {
-            shader.uniforms.maxSteps.value = 80;
-        } else {
-            framesHit = 0;
-        }
-
-        if (framesHit >= 10 && shader.uniforms.maxSteps.value < 80) {
-            shader.uniforms.maxSteps.value += 5;
-            // at least two frames at the next cadence before increasing steps
-            framesHit = 8;
-        }
-        const { width, height } = fractalElement.getBoundingClientRect();
-        shader.uniforms.screenRes.value = new THREE.Vector2(width, height);
-        shader.uniforms.randSeed.value = new THREE.Vector2(THREE.Math.randFloat(0.0, 1.0), THREE.Math.randFloat(0.0, 1.0));
-        
-        renderer.render(scene, frameCamera);
-
-        // framerate is too low to animate
-        if (timeDelta !== 0 && timeDelta < 0.15) {
-            return;
-        }
+        render();
         requestAnimationFrame(animate);
     }
-    requestAnimationFrame(animate);
+
+    function scaleMaxSteps() {
+        if (clock.average <= 1.01) {
+            shader.uniforms.maxSteps.value += 5;
+        } else if (clock.average > 1.1 && shader.uniforms.maxSteps.value > 40) {
+            shader.uniforms.maxSteps.value -= 5;
+        }
+    }
+
+    function scaleMaxStepsWhileRendering() {
+        scaleMaxSteps();
+        render();
+        if (shader.uniforms.maxSteps.value === 80) {
+            requestAnimationFrame(animate);
+        } else {
+            requestAnimationFrame(scaleMaxStepsWhileRendering);
+        }
+    }
+
+    let downScaleCount = 0;
+    function scaleRenderSize() {
+        if (clock.frames <= 10) {
+            return;
+        }
+        if (clock.average <= 1.01 && downScaleCount < 5) {
+            canvasScaling -= .5;
+            resize();
+        } else if (clock.average > 1.1 && canvasScaling < 8) {
+            canvasScaling += .5;    
+            resize();
+            downScaleCount++;
+        }
+    }
+
+    function scaleUpWhileRendering() {
+        scaleRenderSize();
+        render();
+
+        if (canvasScaling === 1) {
+            requestAnimationFrame(scaleMaxStepsWhileRendering);
+        } else {
+            requestAnimationFrame(scaleUpWhileRendering);
+        }
+    }
+
+    requestAnimationFrame(scaleUpWhileRendering);
 }
 createShader();
