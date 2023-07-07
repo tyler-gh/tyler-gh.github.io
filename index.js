@@ -29,24 +29,28 @@ async function createShader() {
         fragmentShader,
         uniforms: {
             screenRes: { value: new THREE.Vector2() },
-            randSeed: {},
+            randSeed: { value: new THREE.Vector2() },
             mousePos: { value: new THREE.Vector2() },
             cameraPos: { value: new THREE.Vector3() },
             cameraDir: { value: new THREE.Vector3() },
             cameraRight: { value: new THREE.Vector3() },
             cameraSpeed: { value: 1.0 },
             framesCount: { value: 1.0 },
-            cameraFocus: { type: "float", value: 1.9 },
-            cameraZoom: { type: "float", value: 6.5 },
-            hueScale: { type: "float", value: 1.9 },
-            saturation: { type: "float", value: 0.7 },
-            colorValue: { type: "float", value: 0.7 },
-            exponent: { type: "float", value: 6 },
+            cameraFocus: { value: 1.9 },
+            cameraZoom: { value: 6.5 },
+            hueScale: { value: 1.9 },
+            saturation: { value: 0.7 },
+            colorValue: { value: 0.7 },
+            exponent: { value: 6 },
         },
     });
     mesh.material = shader;
 
-    let canvasScaling = 8;
+    const MAX_SCALE = 8;
+    const MIN_SCALE = 1;
+
+    const storedScale = Number(localStorage.getItem('canvasScaling') ?? NaN)
+    let canvasScaling = Math.max(Math.min(isNaN(storedScale) ? MAX_SCALE : storedScale, MAX_SCALE), MIN_SCALE);
 
     function resize() {
         const { width, height } = fractalElement.getBoundingClientRect();
@@ -78,6 +82,7 @@ async function createShader() {
         const orbit = new OrbitControls(camera, element);
         orbit.autoRotate = true;
         orbit.enableKeys = false;
+        orbit.enablePan = false;
         orbit.rotateSpeed = 0.25;
         element.addEventListener('pointerdown', (event) => {
             camera.up.set(0, 1, 0);
@@ -162,43 +167,40 @@ async function createShader() {
         animateValue(exponentAnimation, clock.normalizedDelta);
         animateValue(colorAnimation, clock.normalizedDelta);
         sendCameraToShader();
-        shader.uniforms.randSeed.value = new THREE.Vector2(THREE.Math.randFloat(0.0, 1.0), THREE.Math.randFloat(0.0, 1.0));
+        shader.uniforms.randSeed.value.set(THREE.Math.randFloat(0.0, 1.0), THREE.Math.randFloat(0.0, 1.0));
         renderer.render(scene, frameCamera);
     }
 
+    function getScaleDelta() {
+        if (clock.average <= 1.01 && canvasScaling > MIN_SCALE) {
+            return -0.1;
+        } 
+        if (clock.average > 1.1 && canvasScaling < MAX_SCALE) {
+            return 0.1;
+        }
+        return 0;
+    }
+
+    let lastScaleFrame = 0;
+    function scaleRenderSize() {
+        if (clock.frames <= 10 || (clock.frames - lastScaleFrame) < 5) {
+            return;
+        }
+        const scaleDelta = getScaleDelta();
+        if (scaleDelta !== 0) {
+            canvasScaling += scaleDelta
+            lastScaleFrame = clock.frames;
+            resize();
+            localStorage.setItem('canvasScaling', `${canvasScaling}`);
+        }
+    }
+
     function animate() {
+        scaleRenderSize();
         render();
         requestAnimationFrame(animate);
     }
 
-    let downScaleCount = 0;
-    let lastScaleFrame = 0;
-    function scaleRenderSize() {
-        if (clock.frames <= 10) {
-            return;
-        }
-        if (clock.average <= 1.01 && (clock.frames - lastScaleFrame) > 5 && downScaleCount < 5) {
-            canvasScaling -= .5;
-            lastScaleFrame = clock.frames;
-            resize();
-        } else if (clock.average > 1.1 && canvasScaling < 8) {
-            canvasScaling += .5;
-            resize();
-            downScaleCount++;
-        }
-    }
-
-    function scaleUpWhileRendering() {
-        scaleRenderSize();
-        render();
-
-        if (canvasScaling === 1) {
-            requestAnimationFrame(animate);
-        } else {
-            requestAnimationFrame(scaleUpWhileRendering);
-        }
-    }
-
-    requestAnimationFrame(scaleUpWhileRendering);
+    requestAnimationFrame(animate);
 }
 createShader();
