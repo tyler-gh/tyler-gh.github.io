@@ -42,7 +42,6 @@ async function createShader() {
             saturation: { type: "float", value: 0.7 },
             colorValue: { type: "float", value: 0.7 },
             exponent: { type: "float", value: 6 },
-            maxSteps: { type: "int", value: 50 },
         },
     });
     mesh.material = shader;
@@ -167,29 +166,9 @@ async function createShader() {
         renderer.render(scene, frameCamera);
     }
 
-
-
     function animate() {
         render();
         requestAnimationFrame(animate);
-    }
-
-    function scaleMaxSteps() {
-        if (clock.average <= 1.01) {
-            shader.uniforms.maxSteps.value += 5;
-        } else if (clock.average > 1.1 && shader.uniforms.maxSteps.value > 40) {
-            shader.uniforms.maxSteps.value -= 5;
-        }
-    }
-
-    function scaleMaxStepsWhileRendering() {
-        scaleMaxSteps();
-        render();
-        if (shader.uniforms.maxSteps.value === 80) {
-            requestAnimationFrame(animate);
-        } else {
-            requestAnimationFrame(scaleMaxStepsWhileRendering);
-        }
     }
 
     let downScaleCount = 0;
@@ -214,7 +193,7 @@ async function createShader() {
         render();
 
         if (canvasScaling === 1) {
-            requestAnimationFrame(scaleMaxStepsWhileRendering);
+            requestAnimationFrame(animate);
         } else {
             requestAnimationFrame(scaleUpWhileRendering);
         }

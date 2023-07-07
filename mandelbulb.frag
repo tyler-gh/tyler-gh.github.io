@@ -23,7 +23,6 @@ uniform float saturation;
 uniform float colorValue;
 
 uniform float exponent;
-uniform int maxSteps;
 
 vec2 randCoord;
 
@@ -81,7 +80,7 @@ Distance mandelbulb(vec3 p) {
 }
 
 vec3 light(int i) {
-	return vec3(1.0 - float(i) / float(maxSteps));
+	return vec3(1.0 - float(i) / float(MAX_STEPS));
 }
 
 vec3 raymarch(vec3 p, vec3 dir) {
@@ -89,9 +88,6 @@ vec3 raymarch(vec3 p, vec3 dir) {
 	float eps = EPS * dist.value / cameraZoom;
 
 	for (int i = 0; i < MAX_STEPS; ++i) {
-		if (i == maxSteps) {
-			break;
-		}
 		Distance dist = mandelbulb(p);
 		float d = dist.value;
 
