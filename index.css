@@ -43,3 +43,7 @@ a {
 a:visited {
     color: #AAAAAA;
 }
+
+canvas {
+    image-rendering: crisp-edges;
+}
