@@ -48,13 +48,15 @@ async function createShader() {
     mesh.material = shader;
 
     let canvasScaling = 8;
-    
+
     function resize() {
         const { width, height } = fractalElement.getBoundingClientRect();
 
         const cameraWidth = width / canvasScaling;
         const cameraHeight = height / canvasScaling;
 
+        const currentSize = new THREE.Vector2();
+        renderer.getSize(currentSize);
         camera.aspect = cameraWidth / cameraHeight;
         camera.updateProjectionMatrix();
         shader.uniforms.screenRes.value.set(cameraWidth, cameraHeight);
@@ -63,6 +65,12 @@ async function createShader() {
 
         renderer.domElement.style.width = width;
         renderer.domElement.style.height = height;
+
+        const currentMousePos = shader.uniforms.mousePos.value;
+        shader.uniforms.mousePos.value.set(
+            currentMousePos.x * (cameraWidth / currentSize.x),
+            currentMousePos.y * (cameraHeight / currentSize.y),
+        );
     }
     resize();
     window.addEventListener('resize', resize);
@@ -135,6 +143,10 @@ async function createShader() {
 
         update() {
             const time = performance.now();
+            if (this.lastMeasuredTime === 0) {
+                this.lastMeasuredTime = time;
+                return;
+            }
             const delta = (time - this.lastMeasuredTime) / 1000;
             this.lastMeasuredTime = time;
             this.average -= this.average / 30;
@@ -189,7 +201,7 @@ async function createShader() {
             canvasScaling -= .5;
             resize();
         } else if (clock.average > 1.1 && canvasScaling < 8) {
-            canvasScaling += .5;    
+            canvasScaling += .5;
             resize();
             downScaleCount++;
         }
