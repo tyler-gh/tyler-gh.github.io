@@ -193,12 +193,14 @@ async function createShader() {
     }
 
     let downScaleCount = 0;
+    let lastScaleFrame = 0;
     function scaleRenderSize() {
         if (clock.frames <= 10) {
             return;
         }
-        if (clock.average <= 1.01 && downScaleCount < 5) {
+        if (clock.average <= 1.01 && (clock.frames - lastScaleFrame) > 5 && downScaleCount < 5) {
             canvasScaling -= .5;
+            lastScaleFrame = clock.frames;
             resize();
         } else if (clock.average > 1.1 && canvasScaling < 8) {
             canvasScaling += .5;
