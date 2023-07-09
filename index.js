@@ -29,17 +29,10 @@ async function createShader() {
         fragmentShader,
         uniforms: {
             screenRes: { value: new THREE.Vector2() },
-            randSeed: { value: new THREE.Vector2() },
             mousePos: { value: new THREE.Vector2() },
             cameraPos: { value: new THREE.Vector3() },
             cameraDir: { value: new THREE.Vector3() },
             cameraRight: { value: new THREE.Vector3() },
-            cameraSpeed: { value: 1.0 },
-            framesCount: { value: 1.0 },
-            cameraFocus: { value: 1.9 },
-            cameraZoom: { value: 6.5 },
-            hueScale: { value: 1.9 },
-            saturation: { value: 0.7 },
             colorValue: { value: 0.7 },
             exponent: { value: 6 },
         },
@@ -49,7 +42,7 @@ async function createShader() {
     const MAX_SCALE = 8;
     const MIN_SCALE = 1;
 
-    const storedScale = Number(localStorage.getItem('canvasScaling') ?? NaN)
+    const storedScale = Number(localStorage.getItem('canvasScaling') ?? NaN);
     let canvasScaling = Math.max(Math.min(isNaN(storedScale) ? MAX_SCALE : storedScale, MAX_SCALE), MIN_SCALE);
 
     function resize() {
@@ -158,6 +151,13 @@ async function createShader() {
             this.normalizedDelta = delta * 30;
             this.frames++;
         }
+
+        reset() {
+            this.average = 1.0;
+            this.lastMeasuredTime = 0;
+            this.normalizedDelta = 0;
+            this.frames = 0;
+        }
     }
     const clock = new AverageFPS();
 
@@ -167,16 +167,16 @@ async function createShader() {
         animateValue(exponentAnimation, clock.normalizedDelta);
         animateValue(colorAnimation, clock.normalizedDelta);
         sendCameraToShader();
-        shader.uniforms.randSeed.value.set(THREE.Math.randFloat(0.0, 1.0), THREE.Math.randFloat(0.0, 1.0));
         renderer.render(scene, frameCamera);
     }
 
+    let deltaMagnitude = 0.1;
     function getScaleDelta() {
         if (clock.average <= 1.01 && canvasScaling > MIN_SCALE) {
-            return -0.1;
-        } 
-        if (clock.average > 1.1 && canvasScaling < MAX_SCALE) {
-            return 0.1;
+            return -deltaMagnitude;
+        }
+        if (clock.average > 1.05 && canvasScaling < MAX_SCALE) {
+            return deltaMagnitude;
         }
         return 0;
     }
@@ -193,14 +193,30 @@ async function createShader() {
             resize();
             localStorage.setItem('canvasScaling', `${canvasScaling}`);
         }
+        if (scaleDelta > 0) {
+            deltaMagnitude /= 2;
+        }
     }
+
+    let animationHandle = -1;
+    document.addEventListener('visibilitychange', () => {
+        clock.reset();
+        if (animationHandle !== -1) {
+            cancelAnimationFrame(animationHandle);
+        }
+        if (document.visibilityState === 'visible') {
+            animationHandle = requestAnimationFrame(animate);
+        } else {
+            animationHandle = -1;
+        }
+    });
 
     function animate() {
         scaleRenderSize();
         render();
-        requestAnimationFrame(animate);
+        animationHandle = requestAnimationFrame(animate);
     }
 
-    requestAnimationFrame(animate);
+    animationHandle = requestAnimationFrame(animate);
 }
 createShader();
