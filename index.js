@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const fractalElement = document.querySelector('.fractal');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer();
 fractalElement.append(renderer.domElement);
 
 const scene = new THREE.Scene();

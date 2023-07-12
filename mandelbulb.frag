@@ -6,6 +6,7 @@ const float HUE = 1.9;
 const float FOCUS = 1.9;
 const float SATURATION = 0.7;
 const int MAX_STEPS = 80;
+const float MAX_STEPS_F = float(MAX_STEPS);
 const int NUM_ITERATIONS = 8;
 const vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
 
@@ -19,14 +20,16 @@ uniform vec3 cameraRight;
 uniform float colorValue;
 uniform float exponent;
 
-vec3 hsv2rgb(float x, float y, float z) {
-	vec3 p = abs(fract(vec3(x) + K.xyz) * 6.0 - K.www);
-	return z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), y);
-}
 struct Distance {
 	float value;
 	float min;
 };
+
+vec3 hsv2rgb(float x, float y, float z) {
+	vec3 p = abs(fract(vec3(x) + K.xyz) * 6.0 - K.www);
+	return z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), y);
+}
+
 Distance mandelbulb(vec3 p) {
 	vec3 z = vec3(0.0);
 	vec3 d = vec3(1.0);
@@ -52,8 +55,8 @@ Distance mandelbulb(vec3 p) {
 	return Distance(r * log(r) * 0.5 / length(d), b);
 }
 
-vec3 light(int i) {
-	return vec3(1.0 - float(i) / float(MAX_STEPS));
+float light(int i) {
+	return 1.0 - float(i) / MAX_STEPS_F;
 }
 
 vec3 raymarch(vec3 p, vec3 dir) {
@@ -73,7 +76,7 @@ vec3 raymarch(vec3 p, vec3 dir) {
 
 void main(void) {
 	float res = min(screenRes.x, screenRes.y);
-	float distortionRadius = res / 24.0;
+	float distortionRadius = res / 12.0;
 	vec2 mouseVector = gl_FragCoord.xy - mousePos;
 	vec2 vecDirection = normalize(mouseVector);
 	float dist = length(mouseVector);
