@@ -8,7 +8,7 @@ const renderer = new THREE.WebGLRenderer();
 fractalElement.append(renderer.domElement);
 
 const scene = new THREE.Scene();
-const mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2.0, 2.0), null);
+const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 2.0), null);
 scene.add(mesh);
 
 const frameCamera = new THREE.Camera();
